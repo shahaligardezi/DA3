@@ -86,7 +86,91 @@ dt <- dt[, ethnic := NULL]
 
 ```
 
+
+
 ```{r}
 
+# Creating levels for grade92 variable in a new variable educ#
+dt <- dt[grade92 == 43, educ := "Bachelors"]
+dt <-dt[grade92 == 42, educ := "Associate Degree academic program"]
+dt <-dt[grade92 == 41, educ := "Associate Degree occupational program"]
+dt <-dt[grade92 == 40, educ := "College"]
+dt <-dt[grade92 == 39, educ := "High School"]
+dt <- dt[, grade92 := NULL]
+
+# Creating age squared column
+dt <- dt[, agesq := age^2]
+
+# checking result
+datasummary(w*factor(educ) + age ~ Mean + SD + Min + Max + P25 + P75 + N , data = dt)
+
+# Race
+datasummary( w*factor(white) ~ N + SD +Percent() + Mean, data = dt )
+
+# creating binary for white and non white
+dt$white <- ifelse(dt$race==1,1,0)
+dt <- dt %>%
+  select(-c(race))
+
+
+# Creating factor sex variable
+dt <- dt[sex == 1, gender := "male"]
+dt <- dt[sex == 2, gender := "female"]
+dt <- dt %>%
+  select(-c(sex))
+
+# Creating factor variable for marital variable
+dt[marital <= 2, married_status := "married"]
+dt[marital <= 6 & marital >= 3, married_status := "separated"]
+dt[marital == 7, married_status := "never married"]
+dt <- dt %>%
+  select(-c(marital))
+
+# Ownchild
+dt[,.(count=.N), by= ownchild]
+
+# Create if individuals own child or no
+dt <- dt %>% mutate(ownchild=case_when(
+  ownchild==0 ~ 0,
+  TRUE ~ 1))
+datasummary( w*factor(ownchild) ~ N + SD + Mean, data = dt ) 
+
+# dropping as it is the same as own child
+dt <- dt %>%
+  select(-chldpres)
+# ind02( only elementary school)
+datasummary( w*(ind02) ~ N + Percent() + Mean, data = dt ) 
+# exclude from model
+dt <- dt %>% select(-ind02)
+# class
+datasummary( w*factor(class) ~ N + Percent() + Mean, data = dt ) 
+# include as factor
+dt <- dt[class == "Government - Federal"| class=="Government - Local"|class=="Government - State", Sector := "Government"]
+dt <- dt[class == "Private, For Profit"| class=="Private, Nonprofit", Sector := "Private"]
+datasummary( w*factor(Sector) ~ N + Percent() + Mean, data = dt ) 
+dt <- dt %>% select(-class)
+# unionmme
+datasummary( w*factor(unionmme) ~ N + Percent() + Mean, data = dt ) 
+# state 
+datasummary( w*factor(state) ~ N + Percent() + Mean, data = dt ) 
+# lfsr94(mean difference is minor between these two so excluding from)
+datasummary( w*factor(lfsr94) ~ N + Percent() + Mean, data = dt ) 
+# exclude from model
+dt <- dt %>% select(-lfsr94)
+# prcitshp
+datasummary( w*factor(prcitshp) ~ N + Percent() + Mean, data = dt ) 
+dt <- dt[prcitshp=="Native, Born Abroad Of US Parent(s)"|prcitshp=="Native, Born in PR or US Outlying Area"|prcitshp=="Native, Born In US",origin := "Native"]
+dt <- dt[prcitshp=="Foreign Born, Not a US Citizen"|prcitshp=="Foreign Born, US Cit By Naturalization",origin := "Foreign "]
+dt <- dt %>% select(-prcitshp)
+datasummary( w*factor(origin) ~ N + Percent() + Mean, data = dt ) 
+##Creating region baased on states, Used Aftabs ideas to group these codes in region 
+dt <- dt[stfips %in% c("WA", "OR", "MT", "ID", "WY", "NV", "UT", "CO", "AZ", "NM", "HI", "AK", "CA"), region := "west"]
+dt <- dt[stfips %in% c("ND", "SD", "NE", "KS", "MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH"), region := "mid-west"]
+dt <- dt[stfips %in% c("OK", "TX", "AR", "LA", "KY", "TN", "MS", "AL", "WV", "VA", "NC", "SC", "GA", "FL", "DC","MD","DE"), region := "south"]
+dt <- dt[stfips %in% c("PA", "NY", "VT", "NH", "ME","MA","RI","CT","NJ"), region := "north-east"]
+# excluding unwanted variable
+dt <- dt %>% select(-c(V1,hhid,intmonth,weight,occ2012,stfips,state))
 ```
+
+
 
