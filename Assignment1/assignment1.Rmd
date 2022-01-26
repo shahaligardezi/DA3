@@ -47,7 +47,7 @@ data <- fread("https://osf.io/4ay9x/download")
 
 # Number of Observation in each Occupation 
 ob <- data[,.(Count=.N),by=occ2012]
-
+ob2 <- data %>% filter(occ2012==5240)
 
 # Filtering the data for the chosen occupation (Customer service representative)
 dt <- data %>% filter(occ2012==5240)
@@ -446,3 +446,26 @@ ggplot(dt, aes(x=predict(reg2, dt), y=w)) +
   scale_y_continuous(limits = c(0,60)) +
   ggthemes::theme_economist()
 ```
+
+## Introduction ##
+
+The aim of this assignment is to build 4 predictive models using linear regression on the provided data set and then critically comparing and analyzing each of them on the basis of RMSE, cross-validated RMSE and BIC of the sample. The data set used for the analysis is [*cps-earnings*](https://osf.io/g8p9j/)* and the target variable of interest _*earnings per hour (w)*_. The choice of occupation for the analysis which is  _*Customer service representative*_ is based on high number of observations available to start with (2329 observations) and also because of my background in this field, I possess the adequate domain knowledge for analysis.
+
+## Data Cleaning & Munging ##
+
+As a part of Data Munging process, first the earnings per hour variable is created by dividing the weekly earnings by total hours. For this analysis, only full-time employees are chosen (those working 40 hours or more) and the education level upto Bachelors degree is selected since this job role does not require higher education. The ethnicity variable was excluded as it contained close to 50% missing values and data contained race variable to cater to our needs. For the variables such as married status, gender, class, race, state ,citizenship status, new categorical variables are created by grouping within each since not variation was seen in them and to reduce the complexity during analysis.
+
+## Predictor variables and Interaction terms ##
+
+After data cleaning, we were left were the required predictors which are to be used for creating the interaction terms. About 12 different interaction terms were created, each evaluated to see its effect on on _*earnings per hour (w)*_. My criteria for choosing the interaction term for the models rested on the fact if the mean of the change in *w* is significant, that is USD 2 or beyond and number of observations is comparable, that is within 33% of each other. Based on this criteria, 3 interaction terms were not included in the any of prediction models, those with the change in mean of *w* greater than USD 3 were included in Model 3 and Model 4 included all fulfilling the criteria.
+
+## Regression Model ##
+
+After running the predictive models we are now tasked with comparing these models based on: *_1) RMSE in the full sample*_ _*2) Cross-validated RMSE*_ _*3) BIC in the full sample*_ 
+
+The regression table shows that Model 4 which is the most complex model with 13 predictor terms has the lowest full sample RMSE of 8.87, while the full sample RMSE of Model 3 (with 10 predictors) is 8.92. This is a negligible difference, and with higher BIC value for Model 4 suggests overfitting and is subjected to penalty of adding more predictor terms. The cross-validated RMSE for both Model 3 and Model 4 is same (9.06 and 9.05 respectively) and when comparing these with simpler model, Model 2 we see that its value is 9.2. There is a very minor, hence we prefer Model 2 while comparing full sample and K-fold RMSEs as it is simpler and less complex. Lastly, we now check the full sample BIC of the models. Of all models, the lowest BIC is for Model 2 (11565) which  further validates that our choice of Model 2 as best and less complex.
+
+To sum up, while it true that lowest RMSEs value are in Model 4, the difference between those of Model 2 is very minute. We choose the *Model 2* as it is a simple model that help us to avoid over fitting the live data and easier to work with.
+ 
+
+
