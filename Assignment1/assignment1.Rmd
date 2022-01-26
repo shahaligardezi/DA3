@@ -5,12 +5,9 @@ date: "1/25/2022"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ```{r setup, include=FALSE}
-rm(list=ls())
+#rm(list=ls())
 library(gridExtra)
 #####################
 ## Import libraries##
@@ -105,7 +102,7 @@ dt <- dt[, agesq := age^2]
 datasummary(w*factor(educ) + age ~ Mean + SD + Min + Max + P25 + P75 + N , data = dt)
 
 # Race
-datasummary( w*factor(white) ~ N + SD +Percent() + Mean, data = dt )
+datasummary( w*factor(race) ~ N + SD +Percent() + Mean, data = dt )
 
 # creating binary for white and non white
 dt$white <- ifelse(dt$race==1,1,0)
@@ -135,42 +132,233 @@ dt <- dt %>% mutate(ownchild=case_when(
   TRUE ~ 1))
 datasummary( w*factor(ownchild) ~ N + SD + Mean, data = dt ) 
 
-# dropping as it is the same as own child
+# dropping chldpres because our ownchild is same
 dt <- dt %>%
   select(-chldpres)
-# ind02( only elementary school)
-datasummary( w*(ind02) ~ N + Percent() + Mean, data = dt ) 
-# exclude from model
+
+# dropping industries 
+datasummary( w*(ind02) ~ N + Percent() + Mean, data = dt )
 dt <- dt %>% select(-ind02)
+
 # class
 datasummary( w*factor(class) ~ N + Percent() + Mean, data = dt ) 
-# include as factor
+
+# Including Class as factor
 dt <- dt[class == "Government - Federal"| class=="Government - Local"|class=="Government - State", Sector := "Government"]
 dt <- dt[class == "Private, For Profit"| class=="Private, Nonprofit", Sector := "Private"]
 datasummary( w*factor(Sector) ~ N + Percent() + Mean, data = dt ) 
 dt <- dt %>% select(-class)
+
 # unionmme
 datasummary( w*factor(unionmme) ~ N + Percent() + Mean, data = dt ) 
+
 # state 
 datasummary( w*factor(state) ~ N + Percent() + Mean, data = dt ) 
+
 # lfsr94(mean difference is minor between these two so excluding from)
 datasummary( w*factor(lfsr94) ~ N + Percent() + Mean, data = dt ) 
 # exclude from model
 dt <- dt %>% select(-lfsr94)
-# prcitshp
+
+# prcitshp grouping in to Foregin and Native
 datasummary( w*factor(prcitshp) ~ N + Percent() + Mean, data = dt ) 
 dt <- dt[prcitshp=="Native, Born Abroad Of US Parent(s)"|prcitshp=="Native, Born in PR or US Outlying Area"|prcitshp=="Native, Born In US",origin := "Native"]
 dt <- dt[prcitshp=="Foreign Born, Not a US Citizen"|prcitshp=="Foreign Born, US Cit By Naturalization",origin := "Foreign "]
 dt <- dt %>% select(-prcitshp)
 datasummary( w*factor(origin) ~ N + Percent() + Mean, data = dt ) 
-##Creating region baased on states, Used Aftabs ideas to group these codes in region 
+
+##Creating region based on states, Used Aftabs ideas to group these codes in region 
 dt <- dt[stfips %in% c("WA", "OR", "MT", "ID", "WY", "NV", "UT", "CO", "AZ", "NM", "HI", "AK", "CA"), region := "west"]
 dt <- dt[stfips %in% c("ND", "SD", "NE", "KS", "MN", "IA", "MO", "WI", "IL", "IN", "MI", "OH"), region := "mid-west"]
 dt <- dt[stfips %in% c("OK", "TX", "AR", "LA", "KY", "TN", "MS", "AL", "WV", "VA", "NC", "SC", "GA", "FL", "DC","MD","DE"), region := "south"]
 dt <- dt[stfips %in% c("PA", "NY", "VT", "NH", "ME","MA","RI","CT","NJ"), region := "north-east"]
+datasummary( w*factor(region) ~ N + Percent() + Mean, data = dt )
+
 # excluding unwanted variable
 dt <- dt %>% select(-c(V1,hhid,intmonth,weight,occ2012,stfips,state))
 ```
 
+```{r}
+
+###################################
+## Setting up Regressions models ##
+###################################
+
+
+#1#
+datasummary( w*factor(white)*gender ~ N + Percent() + Mean, data = dt ) 
+
+# wage is not very different based on white and gender, so  interaction needed - 
+#My wage is not very different.
+
+#Boxplot#
+white_gender <- ggplot(dt, aes(x = factor(white), y = w,
+                              fill = factor(gender), color=factor(gender))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Race",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=90, vjust=.5))
+
+
+#2#
+datasummary( w*factor(educ)*gender ~ N + Percent() + Mean, data = dt )
+# wage is very different based on education and gender
+## Boxplot##
+educ_gender <- ggplot(dt, aes(x = factor(educ), y = w,
+                              fill = factor(gender), color=factor(gender))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Education",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+#3#
+datasummary( w*married_status*gender ~ N + Percent() + Mean, data = dt )#3
+# wage is very different based on , married_status and gender
+## Boxplot##
+
+Mstatus_gender <- ggplot(dt, aes(x = factor(married_status), y = w,
+                              fill = factor(gender), color=factor(gender))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Married status",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+#4#
+datasummary( w*Sector*gender ~ N + Percent() + Mean, data = dt )#4
+# wage is very different based on education and gender
+
+## Boxplot##
+Sector_gender <- ggplot(dt, aes(x = factor(Sector), y = w,
+                              fill = factor(gender), color=factor(gender))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Sector",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+#5#
+datasummary( w*unionmme*gender ~ N + Percent() + Mean, data = dt ) 
+
+## Boxplot##
+Union_gender <- ggplot(dt, aes(x = factor(unionmme), y = w,
+                              fill = factor(gender), color=factor(gender))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Union Membership",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+#6#
+datasummary( w*unionmme*Sector ~ N + Percent() + Mean, data = dt )#3
+## Boxplot##
+Union_Sector <- ggplot(dt, aes(x = factor(unionmme), y = w,
+                              fill = factor(Sector), color=factor(Sector))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Union Membership",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+#7#
+datasummary( w*origin*Sector ~ N + Percent() + Mean, data = dt ) # not including since the wage differential is low
+ #wage is not very different
+
+#8#
+datasummary(w*Sector*region ~ N + Percent() + Mean, data = dt)#4
+## Boxplot##
+Sector_Region<- ggplot(dt, aes(x = factor(region), y = w,
+                              fill = factor(Sector), color=factor(Sector))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Region",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+#9#
+datasummary(w*factor(white)*factor(married_status)  ~ N + Percent() + Mean, data = dt )#4
+## Boxplot##
+White_Status<- ggplot(dt, aes(x = factor(married_status), y = w,
+                              fill = factor(white), color=factor(white))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Marriage Status",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+#10# (Will be keeping this for final model.Varibales too many can lead to over fitting)
+datasummary(w*factor(educ)*region  ~ N + Percent() + Mean, data = dt )#4
+
+
+#11#
+datasummary(w*origin*factor(educ)  ~ N + Percent() + Mean, data = dt) 
+# big differences observed 
+
+origin_educ <- ggplot(dt, aes(x = factor(educ), y = w,
+                              fill = factor(origin), color=factor(origin))) +
+  geom_boxplot(alpha=0.8, na.rm=T, outlier.shape = NA, width = 0.8) +
+  stat_boxplot(geom = "errorbar", width = 0.8, size = 0.3, na.rm=T)+
+  scale_color_manual(name="",
+                     values=c('red','blue')) +
+  scale_fill_manual(name="",
+                    values=c('red','blue')) +
+  labs(x = "Education",y = "Wage per Hour (USD)")+
+  scale_y_continuous(expand = c(0.01,0.01), limits=c(0, 70), breaks = seq(0,70, 10))+
+  ggthemes::theme_economist() +
+  theme(legend.position = c(0.15,0.85), axis.text.x = element_text(angle=45, vjust=.5))
+
+
+
+#12#
+datasummary(w*factor(ownchild)*factor(gender) ~ N + Percent() + Mean, data = dt )
+# not including since the wage differential is minor
+```
 
 
